@@ -37,24 +37,24 @@ object Server {
   private val clients = mutable.Buffer[Player]()
   //private val obstacles = mutable.Buffer[Maps]()
   private var winner = -1
+  private var ss: ServerSocket = _
 
   def main(args: Array[String]){
+    new ServerSocket(4446)
     receive_slaves()
+    ss = new ServerSocket(4444)
+
     var loops = 4
+
 
     while (loops != 0) {
       master = Helper.getMasterAvailableServer()
       println(master)
 
-      try {
-        master match {
-          case Me => lodge()
-          case Helper.Server(null) =>
-          case _ => listen_to_master()
-        }
-      } catch {
-        case _: IOException => print("Master is down")
-        case _: Throwable  => print("Jummm")
+      master match {
+        case Me => lodge()
+        case Helper.Server(null) =>
+        case _ => listen_to_master()
       }
       loops -= 1
     }
@@ -107,7 +107,6 @@ object Server {
 
 
   def lodge(): Unit = {
-    val ss = new ServerSocket(4444)
 
     while (clients.length < 2){
       val sock = ss.accept

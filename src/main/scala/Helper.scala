@@ -33,7 +33,7 @@ object Helper {
   def checkServer(server: Server): Boolean = {
     try {
       val s = new Socket()
-      s.connect(new InetSocketAddress(server.ip, 4445), 500)
+      s.connect(new InetSocketAddress(server.ip, 4446), 500)
       Thread.sleep(50)
       s.close()
       true
