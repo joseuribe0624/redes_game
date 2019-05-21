@@ -26,15 +26,14 @@ object Helper {
   }
 
   val servers = List(
-    Server(InetAddress.getByName("10.5.99.145")),
-    Server(InetAddress.getByName("10.5.99.216")),
+    Server(InetAddress.getByAddress("puj.edu.co", Array[Byte](10.toByte, 5.toByte, 99.toByte, 216.toByte) )),
+    Server(InetAddress.getByAddress("puj.edu.co", Array[Byte](10.toByte, 5.toByte, 99.toByte, 145.toByte) )),
   )
 
   def checkServer(server: Server): Boolean = {
     try {
       val s = new Socket()
       s.connect(new InetSocketAddress(server.ip, 4446), 500)
-      Thread.sleep(50)
       s.close()
       true
     } catch {
