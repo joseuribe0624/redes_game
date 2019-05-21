@@ -16,18 +16,6 @@ object Client {
   case class TurnLeft(num:Int)
   case class TurnRight(num:Int)
   case class InitPlayer(id: Int)
-  case class AvailableServer(ip: InetAddress) {
-    def max(that: AvailableServer): AvailableServer = {
-      val ipSelf = this.ip.getAddress()
-      val ipThat = that.ip.getAddress()
-
-      return this
-    }
-  }
-  val servers = List(
-    AvailableServer(InetAddress.getByName("10.5.99.176")),
-    AvailableServer(InetAddress.getByName("10.5.99.196")),
-  )
 
   val sock = new Socket("localhost", 4444)
   val ois = new ObjectInputStream(new BufferedInputStream(sock.getInputStream()))
