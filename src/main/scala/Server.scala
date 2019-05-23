@@ -42,11 +42,14 @@ object Server {
   private var ss: ServerSocket = _
 
   def main(args: Array[String]){
+    // TODO Cuando usuario se desconecte, eliminarlo del server
+    // TODO Cuando esclavo se desconecte, eliminarlo del server
+    // TODO Bajar timeout de conecciones cliente servidor
     new ServerSocket(4446)
     receive_slaves()
     ss = new ServerSocket(4444)
 
-    var loops = 4
+    var loops = 54
 
 
     while (loops != 0) {
@@ -60,7 +63,9 @@ object Server {
           case _ => listen_to_master()
         }
       } catch {
-        case _: Throwable => println("Something was wrong with Master, Choosing a new master...")
+        case e: Throwable =>
+          println("Something was wrong with Master, Choosing a new master...")
+          println(e)
       }
 
       loops -= 1
@@ -68,29 +73,24 @@ object Server {
   }
 
   def listen_to_master(): Unit = {
-    try {
-      val socket = new Socket(master.ip, 4445)
+    val socket = new Socket(master.ip, 4445)
 
-      val ois = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()))
+    val ois = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()))
 
-      while (socket.isConnected) {
-        val t = ois.readObject()
-        t match {
-          case Clients(backup) =>
-            backup.foreach(c => {
-              if (c.playerNumber < backup_clients.length) backup_clients += new Backup_Player(c.playerNumber, 0, 0, 0, 0, 0)
-              backup_clients(c.playerNumber).x = c.x
-              backup_clients(c.playerNumber).y = c.y
-              backup_clients(c.playerNumber).dir = c.dir
-              backup_clients(c.playerNumber).x2 = c.x2
-              backup_clients(c.playerNumber).y2 = c.y2
-            })
-        }
+    while (socket.isConnected) {
+      val t = ois.readObject()
+      t match {
+        case Clients(backup) =>
+          backup.foreach(c => {
+            if (c.playerNumber >= backup_clients.length) backup_clients += new Backup_Player(c.playerNumber, 0, 0, 0, 0, 0)
+            backup_clients(c.playerNumber).x = c.x
+            backup_clients(c.playerNumber).y = c.y
+            backup_clients(c.playerNumber).dir = c.dir
+            backup_clients(c.playerNumber).x2 = c.x2
+            backup_clients(c.playerNumber).y2 = c.y2
+          })
       }
-    } catch {
-      case _: Throwable => println("Master is down, Choosing a new master...")
     }
-
   }
 
   val update_slaves: Runnable = new Runnable {
@@ -155,8 +155,11 @@ object Server {
       clients += new Player(clients.length, sock, ois, oos, 10, if (clients.isEmpty) 50 else 100, 1, 70 , if (clients.isEmpty) 50 else 100 )
     } else {
       val player = new Player(id, sock, ois, oos, backup_clients(id).x, backup_clients(id).y, backup_clients(id).dir, backup_clients(id).x2, backup_clients(id).y2)
-      clients.insert(id, player)
+      if (id >= clients.length ) clients.append(player)
+      else clients.insert(id, player)
+
     }
+    println("Connecting... ", id)
     val T = new ClientHandler(winner, ois, oos)
     T.start()
     if (id < 0) oos.writeObject(Client.InitPlayer(clients.length - 1))
@@ -284,9 +287,9 @@ object Server {
       p2 += clients(1).x -> clients(1).y
       checkerP1 = checkPos(clients.head.x)
       checkerP2 = checkPos(clients(1).x)
-      if ( lose(0) || collide(obstacles(checkerP1),0) ) winner = 0
+      //if ( lose(0) || collide(obstacles(checkerP1),0) ) winner = 0
       //debo pensar en la forma de que este mirando la ubicacion y que si toca uno de los rectangulos inmediatemente pierda
-      else if (lose(1) || collide(obstacles(checkerP2),1)) winner = 1
+      //else if (lose(1) || collide(obstacles(checkerP2),1)) winner = 1
       board(clients.head.x)(clients.head.y) = true
       board(clients(1).x)(clients(1).y) = true
       clients.foreach(p => {
