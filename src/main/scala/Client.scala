@@ -76,9 +76,11 @@ object Client {
       try {
         sock = new Socket(master.ip, 4444)
         oos = new ObjectOutputStream(new BufferedOutputStream(sock.getOutputStream()))
-        oos.writeInt(playerNumber)
         oos.flush()
         ois = new ObjectInputStream(new BufferedInputStream(sock.getInputStream()))
+
+        oos.writeInt(playerNumber)
+        oos.flush()
 
         frame.open
         panel.requestFocus
@@ -95,7 +97,9 @@ object Client {
           }
         }
       } catch {
-        case _: SocketException => master = Helper.getMasterAvailableServer()
+        case _: SocketException =>
+          master = Helper.getMasterAvailableServer()
+          print(master)
       }
     }
 
