@@ -21,8 +21,9 @@ object Server {
   var obstacles: ArrayBuffer[Rectangle2D] = new ArrayBuffer[Rectangle2D]
   var linesRoad: ArrayBuffer[Rectangle2D] = new ArrayBuffer[Rectangle2D]
 
-  private class Player(val id: Int, val sock: Socket, val ois: ObjectInputStream, val oos: ObjectOutputStream,
+  private class Player(var id: Int, var sock: Socket, var ois: ObjectInputStream, var oos: ObjectOutputStream,
                var x: Int, var y: Int, var dir: Int, var x2: Int, var y2: Int)
+  private class Backup_Player(var id: Int, var x: Int, var y: Int, var dir: Int, var x2: Int, var y2: Int)
 
 
   case class PlayerS(playerNumber: Int, x: Int, y: Int, dir: Int, x2: Int, y2: Int)
@@ -35,6 +36,7 @@ object Server {
   //map
   //class Maps(val sock: Socket, var x:Int, var y: Int)
   private val clients = mutable.Buffer[Player]()
+  private val backup_clients = mutable.Buffer[Backup_Player]()
   //private val obstacles = mutable.Buffer[Maps]()
   private var winner = -1
   private var ss: ServerSocket = _
@@ -51,23 +53,44 @@ object Server {
       master = Helper.getMasterAvailableServer()
       println(master)
 
-      master match {
-        case Me => lodge()
-        case Helper.Server(null) =>
-        case _ => listen_to_master()
+      try {
+        master match {
+          case Me => lodge()
+          case Helper.Server(null) =>
+          case _ => listen_to_master()
+        }
+      } catch {
+        case _: Throwable => println("Something was wrong with Master, Choosing a new master...")
       }
+
       loops -= 1
     }
   }
 
   def listen_to_master(): Unit = {
-    val socket = new Socket(master.ip, 4445)
+    try {
+      val socket = new Socket(master.ip, 4445)
 
-    val ois = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()))
+      val ois = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()))
 
-    while (socket.isConnected) {
-      println(ois.readObject())
+      while (socket.isConnected) {
+        val t = ois.readObject()
+        t match {
+          case Clients(backup) =>
+            backup.foreach(c => {
+              if (c.playerNumber < backup_clients.length) backup_clients += new Backup_Player(c.playerNumber, 0, 0, 0, 0, 0)
+              backup_clients(c.playerNumber).x = c.x
+              backup_clients(c.playerNumber).y = c.y
+              backup_clients(c.playerNumber).dir = c.dir
+              backup_clients(c.playerNumber).x2 = c.x2
+              backup_clients(c.playerNumber).y2 = c.y2
+            })
+        }
+      }
+    } catch {
+      case _: Throwable => println("Master is down, Choosing a new master...")
     }
+
   }
 
   val update_slaves: Runnable = new Runnable {
@@ -108,7 +131,7 @@ object Server {
 
   def lodge(): Unit = {
 
-    while (clients.length < 2){
+    while (clients.lengthCompare(2) < 0){
       val sock = ss.accept
       connect_client(sock)
     }
@@ -117,7 +140,7 @@ object Server {
   }
 
   def connect_server(sock: Socket): Unit = {
-    val oos = new ObjectOutputStream(new BufferedOutputStream(sock.getOutputStream))
+    val oos = new ObjectOutputStream(new BufferedOutputStream(sock.getOutputStream()))
     oos.flush()
     slaves.append(Slave(sock, oos))
   }
@@ -126,11 +149,17 @@ object Server {
     val oos = new ObjectOutputStream(new BufferedOutputStream(sock.getOutputStream()))
     oos.flush()
     val ois = new ObjectInputStream(new BufferedInputStream(sock.getInputStream()))
-    clients += new Player(clients.length, sock, ois, oos, 10, if (clients.isEmpty) 50 else 100, 1, 70 , if (clients.isEmpty) 50 else 100 )
 
+    val id = ois.readInt()
+    if (id < 0) {
+      clients += new Player(clients.length, sock, ois, oos, 10, if (clients.isEmpty) 50 else 100, 1, 70 , if (clients.isEmpty) 50 else 100 )
+    } else {
+      val player = new Player(id, sock, ois, oos, backup_clients(id).x, backup_clients(id).y, backup_clients(id).dir, backup_clients(id).x2, backup_clients(id).y2)
+      clients.insert(id, player)
+    }
     val T = new ClientHandler(winner, ois, oos)
     T.start()
-    oos.writeObject(Client.InitPlayer(clients.length - 1))
+    if (id < 0) oos.writeObject(Client.InitPlayer(clients.length - 1))
     oos.flush()
   }
 

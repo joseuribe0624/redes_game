@@ -2,7 +2,7 @@ import scala.swing._
 import java.awt.image.BufferedImage
 import java.awt.Color
 import java.io.{BufferedInputStream, BufferedOutputStream, IOException, ObjectInputStream, ObjectOutputStream}
-import java.net.{InetAddress, Socket}
+import java.net.{InetAddress, Socket, SocketException}
 
 import scala.swing.event._
 import java.awt.Graphics2D
@@ -17,11 +17,11 @@ object Client {
   case class TurnRight(num:Int)
   case class InitPlayer(id: Int)
 
-  val sock = new Socket("localhost", 4444)
-  val ois = new ObjectInputStream(new BufferedInputStream(sock.getInputStream()))
-  val oos = new ObjectOutputStream(new BufferedOutputStream(sock.getOutputStream()))
-  var playerNumber = 0
-  oos.flush
+  var sock: Socket = _
+  var oos: ObjectOutputStream = _
+  var ois: ObjectInputStream = _
+  var playerNumber: Int = -1
+  //oos.flush
   var message = ""
   //var draw: Rectangle2D = new Rectangle2D.Double(0,0 ,0,0)
   var squares: ArrayBuffer[Rectangle2D] = new  ArrayBuffer[Rectangle2D]
@@ -29,7 +29,7 @@ object Client {
 
   var img: BufferedImage = new BufferedImage(500,500, BufferedImage.TYPE_INT_RGB)
   var one = false
-  val panel = new Panel {
+  val panel: Panel = new Panel {
     override def paint(g: Graphics2D){
       g.drawImage(img, 0, 0, null)
       g.setPaint(Color.white)
@@ -46,16 +46,16 @@ object Client {
     preferredSize = new Dimension(img.getWidth, img.getHeight)
     listenTo(mouse.clicks, keys)
     reactions += {
-      case e: MouseClicked => requestFocus
-      case e: MouseEntered => requestFocus
+      case _: MouseClicked => requestFocus
+      case _: MouseEntered => requestFocus
       case e: KeyPressed =>
         e.key match {
           case Key.Left =>
             oos.writeObject(TurnLeft(playerNumber))
-            oos.flush
+            oos.flush()
           case Key.Right =>
             oos.writeObject(TurnRight(playerNumber))
-            oos.flush
+            oos.flush()
           case _ =>
         }
     }
@@ -68,20 +68,37 @@ object Client {
   }
 
   def main(args: Array[String]){
-    frame.open
-    panel.requestFocus
-    var flag = true
-    while(flag){
-      ois.readObject match {
-        case InitPlayer(id) => initPlayer(id)
-        case Server.CountDown(value) => gameStart(value)
-        //tener en cuenta esto a la hora de la cant de jugadores
-        case Server.GameDrawRoad(obst) => gameDrawRoad(obst)
-        case Server.StepTaken(p1,p2) => stepTaken(p1,p2)
-        case Server.GameEnds(winner) => gameEnds(winner)
-          flag= false
+
+    var master = Helper.getMasterAvailableServer()
+    val down = Helper.Server(ip = null)
+
+    while (master != down) {
+      try {
+        sock = new Socket(master.ip, 4444)
+        oos = new ObjectOutputStream(new BufferedOutputStream(sock.getOutputStream()))
+        oos.writeInt(playerNumber)
+        oos.flush()
+        ois = new ObjectInputStream(new BufferedInputStream(sock.getInputStream()))
+
+        frame.open
+        panel.requestFocus
+        var flag = true
+        while(flag){
+          ois.readObject match {
+            case InitPlayer(id) => initPlayer(id)
+            case Server.CountDown(value) => gameStart(value)
+            //tener en cuenta esto a la hora de la cant de jugadores
+            case Server.GameDrawRoad(obst) => gameDrawRoad(obst)
+            case Server.StepTaken(p1,p2) => stepTaken(p1,p2)
+            case Server.GameEnds(winner) => gameEnds(winner)
+              flag= false
+          }
+        }
+      } catch {
+        case _: SocketException => master = Helper.getMasterAvailableServer()
       }
     }
+
   }
   def gameStart(count:Int){
     message = count.toString

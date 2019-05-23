@@ -1,6 +1,10 @@
 import java.io.IOException
 import java.net.{InetAddress, InetSocketAddress, Socket, SocketTimeoutException}
 
+import Server.{Clients, PlayerS}
+
+import scala.collection.mutable
+
 object Helper {
   case class Server(ip: InetAddress) {
     def >(that: Server): Boolean = {
@@ -46,5 +50,9 @@ object Helper {
     val available = servers.filter(checkServer)
     if (available.isEmpty) return Server(null)
     available.reduce((X, Y) => X max Y)
+  }
+
+  def main(args: Array[String]): Unit = {
+    println(getMasterAvailableServer())
   }
 }
