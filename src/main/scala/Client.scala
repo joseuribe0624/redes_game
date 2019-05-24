@@ -1,8 +1,8 @@
 import scala.swing._
 import java.awt.image.BufferedImage
 import java.awt.Color
-import java.io.{BufferedInputStream, BufferedOutputStream, IOException, ObjectInputStream, ObjectOutputStream}
-import java.net.{InetAddress, Socket, SocketException}
+import java.io._
+import java.net._
 
 import scala.swing.event._
 import java.awt.Graphics2D
@@ -74,7 +74,8 @@ object Client {
 
     while (master != down) {
       try {
-        sock = new Socket(master.ip, 4444)
+        sock = new Socket()
+        sock.connect(new InetSocketAddress(master.ip, 4444), 900)
         oos = new ObjectOutputStream(new BufferedOutputStream(sock.getOutputStream()))
         oos.flush()
         ois = new ObjectInputStream(new BufferedInputStream(sock.getInputStream()))
@@ -98,6 +99,9 @@ object Client {
         }
       } catch {
         case _: SocketException =>
+          master = Helper.getMasterAvailableServer()
+          print(master)
+        case _: SocketTimeoutException =>
           master = Helper.getMasterAvailableServer()
           print(master)
       }

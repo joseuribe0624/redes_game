@@ -1,5 +1,5 @@
 import collection.mutable
-import java.net.{InetAddress, InetSocketAddress, ServerSocket, Socket}
+import java.net._
 import java.io._
 import java.awt.geom.Rectangle2D
 
@@ -42,9 +42,6 @@ object Server {
   private var ss: ServerSocket = _
 
   def main(args: Array[String]){
-    // TODO Cuando usuario se desconecte, eliminarlo del server
-    // TODO Cuando esclavo se desconecte, eliminarlo del server
-    // TODO Bajar timeout de conecciones cliente servidor
     new ServerSocket(4446)
     receive_slaves()
     ss = new ServerSocket(4444)
@@ -65,7 +62,6 @@ object Server {
       } catch {
         case e: Throwable =>
           println("Something was wrong with Master, Choosing a new master...")
-          println(e)
       }
 
       loops -= 1
@@ -73,7 +69,8 @@ object Server {
   }
 
   def listen_to_master(): Unit = {
-    val socket = new Socket(master.ip, 4445)
+    val socket = new Socket()
+    socket.connect(new InetSocketAddress(master.ip, 4445), 900)
 
     val ois = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()))
 
@@ -100,8 +97,12 @@ object Server {
         clients.foreach(p => {
           backup.append(PlayerS(p.id, p.x, p.y, p.dir, p.x2, p.y2))
         })
-        s.oos.writeObject(Clients(backup))
-        s.oos.flush()
+        try {
+          s.oos.writeObject(Clients(backup))
+          s.oos.flush()
+        } catch {
+          case _: SocketException =>
+        }
       })
     }
   }
@@ -159,7 +160,7 @@ object Server {
       else clients.insert(id, player)
 
     }
-    println("Connecting... ", id)
+
     val T = new ClientHandler(winner, ois, oos)
     T.start()
     if (id < 0) oos.writeObject(Client.InitPlayer(clients.length - 1))
