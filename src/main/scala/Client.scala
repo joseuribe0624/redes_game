@@ -92,7 +92,7 @@ object Client {
             case Server.CountDown(value) => gameStart(value)
             //tener en cuenta esto a la hora de la cant de jugadores
             case Server.GameDrawRoad(obst) => gameDrawRoad(obst)
-            case Server.StepTaken(p1,p2) => stepTaken(p1,p2)
+            case Server.StepTaken(p1,p2, p3, p4) => stepTaken(p1,p2, p3, p4)
             case Server.GameEnds(winner) => gameEnds(winner)
               flag= false
           }
@@ -139,15 +139,18 @@ object Client {
   }
 
   def gameEnds(winner: Int){
-    message = if(winner == playerNumber)"You won!" else "You lost."
+    message = if(winner == playerNumber) "You lost!" else "You win!"
     if (panel != null) panel.repaint
   }
 
-  def stepTaken(p1: Seq[(Int, Int)], p2: Seq[(Int, Int)]){
+  def stepTaken(p1: Seq[(Int, Int)], p2: Seq[(Int, Int)], p3: Seq[(Int, Int)], p4: Seq[(Int, Int)]){
     message = ""
 
     for ((x,y) <- p1) img.setRGB(x,y, Color.red.getRGB())
     for ((x,y) <- p2) img.setRGB(x,y, Color.blue.getRGB())
+    for ((x,y) <- p3) img.setRGB(x,y, Color.yellow.getRGB())
+    for ((x,y) <- p4) img.setRGB(x,y, Color.green.getRGB())
+
     //for ((x,y) <- p1Map) img.setRGB(x,y, Color.green.getRGB)
     panel.repaint
   }

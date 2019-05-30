@@ -30,8 +30,8 @@ object Helper {
   }
 
   val servers = List(
-    Server(InetAddress.getByAddress("puj.edu.co", Array[Byte](10.toByte, 5.toByte, 99.toByte, 216.toByte) )),
-    Server(InetAddress.getByAddress("puj.edu.co", Array[Byte](10.toByte, 5.toByte, 99.toByte, 145.toByte) )),
+    Server(InetAddress.getByAddress("puj.edu.co", Array[Byte](10.toByte, 5.toByte, 99.toByte, 230.toByte) )),
+    Server(InetAddress.getByAddress("puj.edu.co", Array[Byte](10.toByte, 5.toByte, 99.toByte, 207.toByte) )),
   )
 
   def checkServer(server: Server): Boolean = {

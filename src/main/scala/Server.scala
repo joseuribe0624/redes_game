@@ -12,7 +12,7 @@ object Server {
   case class CountDown(value: Int)
 
   //agregue p1Map
-  case class StepTaken(p1: Seq[(Int, Int)], p2: Seq[(Int, Int)])
+  case class StepTaken(p1: Seq[(Int, Int)], p2: Seq[(Int, Int)], p3: Seq[(Int, Int)], p4: Seq[(Int, Int)])
 
   case class GameEnds(winner: Int)
 
@@ -31,7 +31,7 @@ object Server {
   case class Slave(sock: Socket, oos: ObjectOutputStream)
   private val slaves = mutable.Buffer[Slave]()
   private var master: Helper.Server = Helper.Server(null)
-  private val Me = Helper.Server(InetAddress.getByName("10.5.99.145"))
+  private val Me = Helper.Server(InetAddress.getByName("10.5.99.207"))
 
   //map
   //class Maps(val sock: Socket, var x:Int, var y: Int)
@@ -41,13 +41,14 @@ object Server {
   private var winner = -1
   private var ss: ServerSocket = _
 
+  private val start_pos_y = Array(50, 100, 150, 200)
+
   def main(args: Array[String]){
     new ServerSocket(4446)
     receive_slaves()
     ss = new ServerSocket(4444)
 
     var loops = 54
-
 
     while (loops != 0) {
       master = Helper.getMasterAvailableServer()
@@ -132,7 +133,7 @@ object Server {
 
   def lodge(): Unit = {
 
-    while (clients.lengthCompare(2) < 0){
+    while (clients.lengthCompare(4) < 0){
       val sock = ss.accept
       connect_client(sock)
     }
@@ -153,7 +154,7 @@ object Server {
 
     val id = ois.readInt()
     if (id < 0) {
-      clients += new Player(clients.length, sock, ois, oos, 10, if (clients.isEmpty) 50 else 100, 1, 70 , if (clients.isEmpty) 50 else 100 )
+      clients += new Player(clients.length, sock, ois, oos, 10, start_pos_y(clients.length), 1, 70 , start_pos_y(clients.length) )
     } else {
       val player = new Player(id, sock, ois, oos, backup_clients(id).x, backup_clients(id).y, backup_clients(id).dir, backup_clients(id).x2, backup_clients(id).y2)
       if (id >= clients.length ) clients.append(player)
@@ -218,7 +219,7 @@ object Server {
   }
 
   def lose(playerNumber:Int): Boolean ={
-    if (clients.head.x == 400 || clients(playerNumber).y == clients(1).y2 + 20 || clients(playerNumber).y == clients(1).y2-20){
+    if (clients(playerNumber).x == 400 || clients(playerNumber).y == clients(playerNumber).y2 + 20 || clients(playerNumber).y == clients(playerNumber).y2-20){
       true
     }
     else{
@@ -276,26 +277,38 @@ object Server {
 
     val p1 = mutable.Buffer(clients.head.x -> clients.head.y)
     val p2 = mutable.Buffer(clients(1).x -> clients(1).y)
+    val p3 = mutable.Buffer(clients(2).x -> clients(2).y)
+    val p4 = mutable.Buffer(clients(3).x -> clients(3).y)
     //ultimo
     //val p2Map = mutable.Buffer(clients(1).x2 -> clients(1).y2)
     val board = Array.fill(500, 500)(false)
     var checkerP1 = 0
     var checkerP2 = 0
+    var checkerP3 = 0
+    var checkerP4 = 0
     while (winner < 0){
       // readPlayers
       clients.foreach(move)
       p1 += clients.head.x -> clients.head.y
       p2 += clients(1).x -> clients(1).y
+      p3 += clients(2).x -> clients(2).y
+      p4 += clients(2).x -> clients(3).y
       checkerP1 = checkPos(clients.head.x)
       checkerP2 = checkPos(clients(1).x)
+      checkerP3 = checkPos(clients(2).x)
+      checkerP4 = checkPos(clients(3).x)
       //if ( lose(0) || collide(obstacles(checkerP1),0) ) winner = 0
       //debo pensar en la forma de que este mirando la ubicacion y que si toca uno de los rectangulos inmediatemente pierda
       //else if (lose(1) || collide(obstacles(checkerP2),1)) winner = 1
+      if (lose(2) || collide(obstacles(checkerP3), 2)) winner = 2
+      else if (lose(3) || collide(obstacles(checkerP4),3)) winner = 3
       board(clients.head.x)(clients.head.y) = true
       board(clients(1).x)(clients(1).y) = true
+      board(clients(2).x)(clients(2).y) = true
+      board(clients(3).x)(clients(3).y) = true
       clients.foreach(p => {
         p.oos.reset()
-        p.oos.writeObject(StepTaken(p1,p2))
+        p.oos.writeObject(StepTaken(p1,p2, p3, p4))
         p.oos.flush()
       })
       Thread.sleep(50)
