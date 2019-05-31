@@ -297,10 +297,10 @@ object Server {
       checkerP2 = checkPos(clients(1).x)
       checkerP3 = checkPos(clients(2).x)
       checkerP4 = checkPos(clients(3).x)
-      //if ( lose(0) || collide(obstacles(checkerP1),0) ) winner = 0
       //debo pensar en la forma de que este mirando la ubicacion y que si toca uno de los rectangulos inmediatemente pierda
-      //else if (lose(1) || collide(obstacles(checkerP2),1)) winner = 1
-      if (lose(2) || collide(obstacles(checkerP3), 2)) winner = 2
+      if ( lose(0) || collide(obstacles(checkerP1),0) ) winner = 0
+      else if (lose(1) || collide(obstacles(checkerP2),1)) winner = 1
+      else if (lose(2) || collide(obstacles(checkerP3), 2)) winner = 2
       else if (lose(3) || collide(obstacles(checkerP4),3)) winner = 3
       board(clients.head.x)(clients.head.y) = true
       board(clients(1).x)(clients(1).y) = true
