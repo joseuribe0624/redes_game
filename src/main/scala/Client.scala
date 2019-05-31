@@ -75,7 +75,7 @@ object Client {
     while (master != down) {
       try {
         sock = new Socket()
-        sock.connect(new InetSocketAddress(master.ip, 4444), 900)
+        sock.connect(new InetSocketAddress(master.ip, Server.PORT_GAME), 900)
         oos = new ObjectOutputStream(new BufferedOutputStream(sock.getOutputStream()))
         oos.flush()
         ois = new ObjectInputStream(new BufferedInputStream(sock.getInputStream()))
@@ -85,18 +85,30 @@ object Client {
 
         frame.open
         panel.requestFocus
-        var flag = true
-        while(flag){
-          ois.readObject match {
-            case InitPlayer(id) => initPlayer(id)
-            case Server.CountDown(value) => gameStart(value)
-            //tener en cuenta esto a la hora de la cant de jugadores
-            case Server.GameDrawRoad(obst) => gameDrawRoad(obst)
-            case Server.StepTaken(p1,p2, p3, p4) => stepTaken(p1,p2, p3, p4)
-            case Server.GameEnds(winner) => gameEnds(winner)
-              flag= false
+
+        val read_data: Runnable = new Runnable {
+          override def run(): Unit = {
+            var flag = true
+            while(flag){
+              oos.writeInt(-1)
+              ois.readObject match {
+                case InitPlayer(id) => initPlayer(id)
+                case Server.CountDown(value) => gameStart(value)
+                //tener en cuenta esto a la hora de la cant de jugadores
+                case Server.GameDrawRoad(obst) => gameDrawRoad(obst)
+                case Server.StepTaken(p1,p2, p3, p4) => stepTaken(p1,p2, p3, p4)
+                case Server.GameEnds(winner) => gameEnds(winner)
+                  flag= false
+              }
+            }
           }
         }
+        val t = new Thread(read_data)
+        t.start()
+
+        var is_reachable = true
+        while (is_reachable) is_reachable = master.ip.isReachable(5)
+        throw new SocketException("Unreachable")
       } catch {
         case _: SocketException =>
           master = Helper.getMasterAvailableServer()

@@ -1,7 +1,7 @@
 import java.io.IOException
-import java.net.{InetAddress, InetSocketAddress, Socket, SocketTimeoutException}
+import java.net._
 
-import Server.{Clients, PlayerS}
+import Server.PORT_ALIVE
 
 import scala.collection.mutable
 
@@ -30,14 +30,15 @@ object Helper {
   }
 
   val servers = List(
-    Server(InetAddress.getByAddress("puj.edu.co", Array[Byte](10.toByte, 5.toByte, 99.toByte, 230.toByte) )),
-    Server(InetAddress.getByAddress("puj.edu.co", Array[Byte](10.toByte, 5.toByte, 99.toByte, 207.toByte) )),
+    Server(InetAddress.getByAddress(Array[Byte](192.toByte, 168.toByte, 121.toByte, 40.toByte) )),
+    Server(InetAddress.getByAddress(Array[Byte](192.toByte, 168.toByte, 121.toByte, 38.toByte) )),
+    // Server(InetAddress.getByAddress(Array[Byte](10.toByte, 5.toByte, 99.toByte, 207.toByte) )),
   )
 
   def checkServer(server: Server): Boolean = {
     try {
       val s = new Socket()
-      s.connect(new InetSocketAddress(server.ip, 4446), 500)
+      s.connect(new InetSocketAddress(server.ip, PORT_ALIVE), 500)
       s.close()
       true
     } catch {
@@ -53,6 +54,29 @@ object Helper {
   }
 
   def main(args: Array[String]): Unit = {
-    println(getMasterAvailableServer())
+
+    val check_master: Runnable = new Runnable {
+      override def run(): Unit = {
+        Thread.sleep(3000)
+        throw new SocketException("Unreachable")
+      }
+    }
+
+    val t: Thread = new Thread(check_master)
+
+    t.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler {
+      override def uncaughtException(t: Thread, e: Throwable): Unit = {
+        throw new SocketException("Unreachable")
+      }
+    })
+    try {
+
+      t.start()
+    } catch {
+      case _: Throwable => print("Catch")
+    }
+    //val test = InetAddress.getByAddress(Array[Byte](192.toByte, 168.toByte, 121.toByte, 18.toByte) )
+    //println(master)
+    //println(getMasterAvailableServer())
   }
 }

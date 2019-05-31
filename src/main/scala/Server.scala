@@ -31,7 +31,11 @@ object Server {
   case class Slave(sock: Socket, oos: ObjectOutputStream)
   private val slaves = mutable.Buffer[Slave]()
   private var master: Helper.Server = Helper.Server(null)
-  private val Me = Helper.Server(InetAddress.getByName("10.5.99.207"))
+  private val Me = Helper.Server(InetAddress.getByName("192.168.121.38"))
+
+  val PORT_GAME: Int = 4450
+  val PORT_DATA: Int = 4449
+  val PORT_ALIVE: Int = 4447
 
   //map
   //class Maps(val sock: Socket, var x:Int, var y: Int)
@@ -44,9 +48,9 @@ object Server {
   private val start_pos_y = Array(50, 100, 150, 200)
 
   def main(args: Array[String]){
-    new ServerSocket(4446)
+    new ServerSocket(PORT_ALIVE)
     receive_slaves()
-    ss = new ServerSocket(4444)
+    ss = new ServerSocket(PORT_GAME)
 
     var loops = 54
 
@@ -61,7 +65,7 @@ object Server {
           case _ => listen_to_master()
         }
       } catch {
-        case e: Throwable =>
+        case _: Throwable =>
           println("Something was wrong with Master, Choosing a new master...")
       }
 
@@ -69,26 +73,39 @@ object Server {
     }
   }
 
+
   def listen_to_master(): Unit = {
+    println("I am a slave")
     val socket = new Socket()
-    socket.connect(new InetSocketAddress(master.ip, 4445), 900)
+    socket.connect(new InetSocketAddress(master.ip, PORT_DATA), 900)
 
     val ois = new ObjectInputStream(new BufferedInputStream(socket.getInputStream()))
 
-    while (socket.isConnected) {
-      val t = ois.readObject()
-      t match {
-        case Clients(backup) =>
-          backup.foreach(c => {
-            if (c.playerNumber >= backup_clients.length) backup_clients += new Backup_Player(c.playerNumber, 0, 0, 0, 0, 0)
-            backup_clients(c.playerNumber).x = c.x
-            backup_clients(c.playerNumber).y = c.y
-            backup_clients(c.playerNumber).dir = c.dir
-            backup_clients(c.playerNumber).x2 = c.x2
-            backup_clients(c.playerNumber).y2 = c.y2
-          })
+    val read_data: Runnable = new Runnable {
+      override def run(): Unit = {
+        while (socket.isConnected) {
+          val t = ois.readObject()
+          t match {
+            case Clients(backup) =>
+              backup.foreach(c => {
+                if (c.playerNumber >= backup_clients.length) backup_clients += new Backup_Player(c.playerNumber, 0, 0, 0, 0, 0)
+                backup_clients(c.playerNumber).x = c.x
+                backup_clients(c.playerNumber).y = c.y
+                backup_clients(c.playerNumber).dir = c.dir
+                backup_clients(c.playerNumber).x2 = c.x2
+                backup_clients(c.playerNumber).y2 = c.y2
+              })
+          }
+        }
       }
     }
+
+    val t = new Thread(read_data)
+    t.start()
+    var is_reachable = true
+    while (is_reachable) is_reachable = master.ip.isReachable(5)
+    throw new SocketException("Unreachable")
+
   }
 
   val update_slaves: Runnable = new Runnable {
@@ -110,7 +127,7 @@ object Server {
 
   def receive_slaves(): Unit = {
     val receive_slaves: Runnable = new Runnable  {
-      val so = new ServerSocket(4445)
+      val so = new ServerSocket(PORT_DATA)
       override def run(): Unit = {
         while (!so.isClosed) {
           val sock = so.accept
@@ -120,6 +137,7 @@ object Server {
           })
 
           if (some.nonEmpty) {
+            println("New slave connected")
             connect_server(sock)
           }
         }
@@ -132,7 +150,7 @@ object Server {
 
 
   def lodge(): Unit = {
-
+    println("I am master")
     while (clients.lengthCompare(4) < 0){
       val sock = ss.accept
       connect_client(sock)
@@ -148,6 +166,7 @@ object Server {
   }
 
   def connect_client(sock: Socket){
+    println("New client connected")
     val oos = new ObjectOutputStream(new BufferedOutputStream(sock.getOutputStream()))
     oos.flush()
     val ois = new ObjectInputStream(new BufferedInputStream(sock.getInputStream()))
@@ -298,10 +317,10 @@ object Server {
       checkerP3 = checkPos(clients(2).x)
       checkerP4 = checkPos(clients(3).x)
       //debo pensar en la forma de que este mirando la ubicacion y que si toca uno de los rectangulos inmediatemente pierda
-      if ( lose(0) || collide(obstacles(checkerP1),0) ) winner = 0
+      /*if ( lose(0) || collide(obstacles(checkerP1),0) ) winner = 0
       else if (lose(1) || collide(obstacles(checkerP2),1)) winner = 1
       else if (lose(2) || collide(obstacles(checkerP3), 2)) winner = 2
-      else if (lose(3) || collide(obstacles(checkerP4),3)) winner = 3
+      else if (lose(3) || collide(obstacles(checkerP4),3)) winner = 3*/
       board(clients.head.x)(clients.head.y) = true
       board(clients(1).x)(clients(1).y) = true
       board(clients(2).x)(clients(2).y) = true
@@ -311,7 +330,7 @@ object Server {
         p.oos.writeObject(StepTaken(p1,p2, p3, p4))
         p.oos.flush()
       })
-      Thread.sleep(50)
+      Thread.sleep(30)
 
       val T = new Thread(update_slaves)
       T.start()
