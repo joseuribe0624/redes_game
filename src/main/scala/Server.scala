@@ -31,7 +31,7 @@ object Server {
   case class Slave(sock: Socket, oos: ObjectOutputStream)
   private val slaves = mutable.Buffer[Slave]()
   private var master: Helper.Server = Helper.Server(null)
-  private val Me = Helper.Server(InetAddress.getByName("10.5.99.207"))
+  private val Me = Helper.Server(InetAddress.getByName("localHost"))
 
   //map
   //class Maps(val sock: Socket, var x:Int, var y: Int)
@@ -198,7 +198,7 @@ object Server {
       if (reps == 4) {
         h = 10
         x = x + 150
-        y = 48
+        y = 50
         reps = 0
         change = change + 1
       }
@@ -227,16 +227,49 @@ object Server {
     }
   }
 
-  def checkPos(actualPos: Int): Int ={
+  def checkPos(actualPos: Int, jugador:Int): Int ={
     val check = 30
     if (actualPos < check + 150 ){
-      0
+      if (jugador == 0){
+        0
+      }
+      else if (jugador == 1) {
+        1
+      }
+      else if (jugador == 2){
+        2
+      }
+      else {
+        3
+      }
     }
     else if(actualPos < check + 150*2){
-      1
+      if (jugador == 0){
+        4
+      }
+      else if (jugador == 1) {
+        5
+      }
+      else if (jugador == 2){
+        6
+      }
+      else {
+        7
+      }
     }
     else{
-      2
+      if (jugador == 0){
+        8
+      }
+      else if (jugador == 1) {
+        9
+      }
+      else if (jugador == 2){
+        10
+      }
+      else {
+        11
+      }
     }
   }
 
@@ -282,22 +315,21 @@ object Server {
     //ultimo
     //val p2Map = mutable.Buffer(clients(1).x2 -> clients(1).y2)
     val board = Array.fill(500, 500)(false)
-    var checkerP1 = 0
-    var checkerP2 = 0
-    var checkerP3 = 0
-    var checkerP4 = 0
+    var checkerP1 = 1
+    var checkerP2 = 2
+    var checkerP3 = 3
+    var checkerP4 = 4
     while (winner < 0){
       // readPlayers
       clients.foreach(move)
       p1 += clients.head.x -> clients.head.y
       p2 += clients(1).x -> clients(1).y
       p3 += clients(2).x -> clients(2).y
-      p4 += clients(2).x -> clients(3).y
-      checkerP1 = checkPos(clients.head.x)
-      checkerP2 = checkPos(clients(1).x)
-      checkerP3 = checkPos(clients(2).x)
-      checkerP4 = checkPos(clients(3).x)
-      //debo pensar en la forma de que este mirando la ubicacion y que si toca uno de los rectangulos inmediatemente pierda
+      p4 += clients(3).x -> clients(3).y
+      checkerP1 = checkPos(clients.head.x, 0)
+      checkerP2 = checkPos(clients(1).x,1)
+      checkerP3 = checkPos(clients(2).x,2)
+      checkerP4 = checkPos(clients(3).x,3)
       if ( lose(0) || collide(obstacles(checkerP1),0) ) winner = 0
       else if (lose(1) || collide(obstacles(checkerP2),1)) winner = 1
       else if (lose(2) || collide(obstacles(checkerP3), 2)) winner = 2
@@ -306,6 +338,8 @@ object Server {
       board(clients(1).x)(clients(1).y) = true
       board(clients(2).x)(clients(2).y) = true
       board(clients(3).x)(clients(3).y) = true
+
+
       clients.foreach(p => {
         p.oos.reset()
         p.oos.writeObject(StepTaken(p1,p2, p3, p4))
