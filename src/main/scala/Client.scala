@@ -86,29 +86,24 @@ object Client {
         frame.open
         panel.requestFocus
 
-        val read_data: Runnable = new Runnable {
-          override def run(): Unit = {
-            var flag = true
-            while(flag){
-              oos.writeInt(-1)
-              ois.readObject match {
-                case InitPlayer(id) => initPlayer(id)
-                case Server.CountDown(value) => gameStart(value)
-                //tener en cuenta esto a la hora de la cant de jugadores
-                case Server.GameDrawRoad(obst) => gameDrawRoad(obst)
-                case Server.StepTaken(p1,p2, p3, p4) => stepTaken(p1,p2, p3, p4)
-                case Server.GameEnds(winner) => gameEnds(winner)
-                  flag= false
-              }
-            }
+        var flag = true
+        while(flag){
+          //oos.writeObject(Server.Message(true))
+          //oos.flush()
+          ois.readObject match {
+            case InitPlayer(id) => initPlayer(id)
+            case Server.CountDown(value) =>
+              gameStart(value)
+            case Server.GameDrawRoad(obst) => gameDrawRoad(obst)
+            case Server.StepTaken(p1,p2, p3, p4) => stepTaken(p1,p2, p3, p4)
+            case Server.GameEnds(winner) => gameEnds(winner)
+              flag= false
           }
         }
-        val t = new Thread(read_data)
-        t.start()
 
-        var is_reachable = true
+        /*var is_reachable = true
         while (is_reachable) is_reachable = master.ip.isReachable(5)
-        throw new SocketException("Unreachable")
+        throw new SocketException("Unreachable")*/
       } catch {
         case _: SocketException =>
           master = Helper.getMasterAvailableServer()
